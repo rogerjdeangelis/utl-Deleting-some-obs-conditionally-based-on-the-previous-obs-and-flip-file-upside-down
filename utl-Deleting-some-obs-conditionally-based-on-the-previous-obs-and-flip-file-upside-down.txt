@@ -1,9 +1,23 @@
 Deleting some obs conditionally based on the previous obs and flip file upside down
 
-Flipping a file upside down can very useful, ecpecially useful when the data you need you need is
+   Two Solutions
+
+        1, Turn the file upside down and delete '/' and two subsequent records.
+           rogerjdeangelis@gmail.com
+
+        2, Uses two input streams. When a '/' record is found in the primary stream the
+           secondary stream  is stopped two records before the '/' record and
+           records are removed.
+
+           by  Keintz, Mark
+           mkeintz@wharton.upenn.edu
+
+
+
+Flipping a file upside down can very useful, especially useful when the data you need is
 close to the end of the file.
 
-SAS cannot easily do this. No SAS dataset was created with this solution.
+SAS cannot easily flip a file.
 
 SAS needs to improve the integration with what I consider the big three, Python, R and Perl.
 Varchar would also help.
@@ -153,6 +167,11 @@ Flipped file triplet records removed
 | .__/|_|  \___/ \___\___||___/___/
 |_|
 ;
+
+*************************************************************************
+1, Turn the file upside down and delete '/' and two subsequent records. *
+*************************************************************************
+
 * no SAS table needed;
 
 %utlfkil(d:/txt/flip.txt);
@@ -187,4 +206,89 @@ data _null_;
  else put txt;
 
 run;quit;
+
+****************************************************************************
+2, Two input streams and when a '/' is found in the primary stream input   *
+****************************************************************************
+
+data _null_;
+  file "d:/txt/have.txt";
+  do rec=75000 to 1 by -1;
+     if mod(rec,7)=0 then do;
+        put rec z8.;
+        put rec z8.;
+        txt=cats('/',put(rec,z8.));
+        put txt;
+     end;
+     else put rec z8.;;
+  end;
+run;quit;
+
+filename in1 'd:/txt/have.txt';
+filename in2 'd:/txt/have.txt';
+
+data _null_;
+
+   infile in1 end=end1;
+   do i=1 by 1 until (_infile_=:"/" or end1);
+     input;
+   end;
+   if end1=0 then testrec=input(substr(_infile_,2,8),8.);
+
+   infile in2 end=dne;
+   do j=1 to i;
+     if j<i then input rec 8. ;
+     else input;
+     file "d:/txt/preflip.txt" ;
+     if rec^=testrec and j<i then put _infile_;
+   end;
+
+   * flip the file;
+   if dne then do; %let rc=%sysfunc(dosubl(%nrstr(
+      %utl_submit_py64('
+
+        infile=open("d:/txt/preflip.txt","r").readlines();
+        ofile=open("d:/txt/flip.txt", "w");
+        ofile.writelines(infile[::-1]);
+
+      ');
+     )));
+   end;
+
+run;quit;
+
+
+NOTE: The infile IN1 is:
+      Filename=d:\txt\have.txt,
+      RECFM=V,LRECL=384,File Size (bytes)=974994,
+      Last Modified=22May2019:19:31:46,
+      Create Time=03Dec2018:19:41:43
+
+NOTE: The infile IN2 is:
+      Filename=d:\txt\have.txt,
+      RECFM=V,LRECL=384,File Size (bytes)=974994,
+      Last Modified=22May2019:19:31:46,
+      Create Time=03Dec2018:19:41:43
+
+NOTE: The file "d:/txt/preflip.txt" is:
+      Filename=d:\txt\preflip.txt,
+      RECFM=V,LRECL=384,File Size (bytes)=0,
+      Last Modified=22May2019:19:32:05,
+      Create Time=22May2019:19:14:14
+
+NOTE: 96428 records were read from the infile IN1.
+      The minimum record length was 8.
+      The maximum record length was 9.
+NOTE: 96428 records were read from the infile IN2.
+      The minimum record length was 8.
+      The maximum record length was 9.
+
+NOTE: 64285 records were written to the file "d:/txt/preflip.txt".
+      The minimum record length was 8.
+      The maximum record length was 8.
+NOTE: DATA statement used (Total process time):
+      real time           0.24 seconds
+
+3604!     quit;
+
 
