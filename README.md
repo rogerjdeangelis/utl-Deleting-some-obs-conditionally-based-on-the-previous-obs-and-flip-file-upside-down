@@ -234,14 +234,14 @@
        do i=1 by 1 until (_infile_=:"/" or end1);
          input;
        end;
-       if end1=0 then testrec=input(substr(_infile_,2,8),8.);
+       if _infile_=:'/' then testrec=input(substr(_infile_,2,8),8.);
 
-       infile in2 end=dne;
+       infile in2;
        do j=1 to i;
          if j<i then input rec 8. ;
          else input;
          file "d:/txt/preflip.txt" ;
-         if rec^=testrec and j<i then put _infile_;
+         if (rec^=testrec and j<i) or testrec=. then put _infile_;
        end;
 
        * flip the file;
@@ -257,6 +257,7 @@
        end;
 
     run;quit;
+
 
 
     NOTE: The infile IN1 is:
